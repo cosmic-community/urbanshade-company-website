@@ -3,24 +3,8 @@ import { getProductBySlug, getProducts } from '@/lib/cosmic'
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
-interface Props {
+interface ProductPageProps {
   params: Promise<{ slug: string }>
-}
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params
-  const product = await getProductBySlug(slug)
-  
-  if (!product) {
-    return {
-      title: 'Product Not Found'
-    }
-  }
-
-  return {
-    title: `${product.metadata?.product_name || product.title} - UrbanShade Company`,
-    description: product.metadata?.short_description || `Learn more about ${product.title}`,
-  }
 }
 
 export async function generateStaticParams() {
@@ -30,7 +14,24 @@ export async function generateStaticParams() {
   }))
 }
 
-export default async function ProductPage({ params }: Props) {
+export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
+  const { slug } = await params
+  const product = await getProductBySlug(slug)
+
+  if (!product) {
+    return {
+      title: 'Product Not Found - UrbanShade Company',
+      description: 'The requested product could not be found.',
+    }
+  }
+
+  return {
+    title: `${product.metadata?.product_name || product.title} - UrbanShade Company`,
+    description: product.metadata?.short_description || 'Learn more about our renewable energy products.',
+  }
+}
+
+export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params
   const product = await getProductBySlug(slug)
 
@@ -38,67 +39,87 @@ export default async function ProductPage({ params }: Props) {
     notFound()
   }
 
+  // Safe access to product specifications with proper null checks
+  const specifications = product.metadata?.specifications || {}
+  const keyFeatures = product.metadata?.key_features || []
+  const productImages = product.metadata?.product_images || []
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Product Images */}
         <div className="space-y-4">
-          {product.metadata?.product_images && product.metadata.product_images.length > 0 ? (
-            <div className="grid gap-4">
-              {/* Main Image */}
-              <div className="aspect-square bg-secondary-100 rounded-lg overflow-hidden">
-                <img
-                  src={`${product.metadata.product_images[0].imgix_url}?w=800&h=800&fit=crop&auto=format,compress`}
-                  alt={product.metadata?.product_name || product.title}
-                  className="w-full h-full object-cover"
-                  width="400"
-                  height="400"
-                />
-              </div>
-              
-              {/* Additional Images */}
-              {product.metadata.product_images.length > 1 && (
-                <div className="grid grid-cols-3 gap-4">
-                  {product.metadata.product_images.slice(1).map((image, index) => (
-                    <div key={index} className="aspect-square bg-secondary-100 rounded-lg overflow-hidden">
-                      <img
-                        src={`${image?.imgix_url || ''}?w=200&h=200&fit=crop&auto=format,compress`}
-                        alt={`${product.metadata?.product_name || product.title} - Image ${index + 2}`}
-                        className="w-full h-full object-cover"
-                        width="100"
-                        height="100"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
+          {productImages.length > 0 ? (
+            <div className="aspect-square bg-secondary-100 rounded-lg overflow-hidden">
+              <img
+                src={`${productImages[0].imgix_url}?w=800&h=800&fit=crop&auto=format,compress`}
+                alt={product.metadata?.product_name || product.title}
+                className="w-full h-full object-cover"
+                width="400"
+                height="400"
+              />
             </div>
           ) : (
             <div className="aspect-square bg-secondary-100 rounded-lg flex items-center justify-center">
-              <span className="text-4xl">🔋</span>
+              <span className="text-4xl">⚡</span>
+            </div>
+          )}
+          
+          {/* Additional Images */}
+          {productImages.length > 1 && (
+            <div className="grid grid-cols-4 gap-2">
+              {productImages.slice(1, 5).map((image, index) => (
+                <div key={index} className="aspect-square bg-secondary-100 rounded overflow-hidden">
+                  <img
+                    src={`${image.imgix_url}?w=200&h=200&fit=crop&auto=format,compress`}
+                    alt={`${product.metadata?.product_name || product.title} - Image ${index + 2}`}
+                    className="w-full h-full object-cover"
+                    width="100"
+                    height="100"
+                  />
+                </div>
+              ))}
             </div>
           )}
         </div>
 
         {/* Product Details */}
         <div className="space-y-6">
-          <div>
-            <h1 className="text-4xl font-bold text-secondary-900 mb-2">
-              {product.metadata?.product_name || product.title}
-            </h1>
-            {product.metadata?.category && (
-              <span className="inline-block px-3 py-1 bg-primary-100 text-primary-800 text-sm font-medium rounded-full">
+          {/* Category Badge */}
+          {product.metadata?.category && (
+            <div>
+              <span className="inline-block px-3 py-1 bg-primary-100 text-primary-800 text-sm font-medium rounded">
                 {product.metadata.category.value}
               </span>
-            )}
-          </div>
-
-          {product.metadata?.price && (
-            <div className="text-3xl font-bold text-primary-600">
-              {product.metadata.price}
             </div>
           )}
 
+          {/* Product Title and Price */}
+          <div>
+            <h1 className="text-3xl font-bold text-secondary-900 mb-2">
+              {product.metadata?.product_name || product.title}
+            </h1>
+            {product.metadata?.price && (
+              <p className="text-2xl font-semibold text-primary-600">
+                {product.metadata.price}
+              </p>
+            )}
+          </div>
+
+          {/* Availability */}
+          {product.metadata?.available !== undefined && (
+            <div className="flex items-center">
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                product.metadata.available 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-red-100 text-red-800'
+              }`}>
+                {product.metadata.available ? '✅ Available' : '❌ Out of Stock'}
+              </span>
+            </div>
+          )}
+
+          {/* Short Description */}
           {product.metadata?.short_description && (
             <p className="text-lg text-secondary-600">
               {product.metadata.short_description}
@@ -106,15 +127,13 @@ export default async function ProductPage({ params }: Props) {
           )}
 
           {/* Key Features */}
-          {product.metadata?.key_features && product.metadata.key_features.length > 0 && (
+          {keyFeatures.length > 0 && (
             <div>
-              <h3 className="text-xl font-semibold text-secondary-900 mb-3">Key Features</h3>
+              <h2 className="text-xl font-semibold text-secondary-900 mb-3">Key Features</h2>
               <ul className="space-y-2">
-                {product.metadata.key_features.map((feature, index) => (
+                {keyFeatures.map((feature, index) => (
                   <li key={index} className="flex items-start">
-                    <svg className="w-5 h-5 text-primary-600 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
+                    <span className="text-primary-600 mr-2">✓</span>
                     <span className="text-secondary-700">{feature}</span>
                   </li>
                 ))}
@@ -122,30 +141,19 @@ export default async function ProductPage({ params }: Props) {
             </div>
           )}
 
-          {/* Availability Status */}
-          <div className="flex items-center space-x-3">
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-              product.metadata?.available 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-red-100 text-red-800'
-            }`}>
-              {product.metadata?.available ? '✅ Available' : '❌ Out of Stock'}
-            </span>
-          </div>
-
-          {/* Actions */}
-          <div className="space-y-4">
+          {/* Call to Action */}
+          <div className="flex gap-4">
             <a
               href="/contact"
-              className="btn btn-primary w-full"
+              className="btn btn-primary flex-1 text-center"
             >
               Get Quote
             </a>
             <a
               href="/contact"
-              className="btn btn-outline w-full"
+              className="btn btn-outline flex-1 text-center"
             >
-              Contact Sales
+              Contact Us
             </a>
           </div>
         </div>
@@ -153,28 +161,28 @@ export default async function ProductPage({ params }: Props) {
 
       {/* Full Description */}
       {product.metadata?.full_description && (
-        <div className="mt-16 border-t pt-16">
-          <h2 className="text-3xl font-bold text-secondary-900 mb-8">Product Details</h2>
+        <div className="mt-16 max-w-4xl mx-auto">
+          <h2 className="text-2xl font-bold text-secondary-900 mb-6">Product Details</h2>
           <div 
-            className="prose prose-lg max-w-none"
+            className="prose prose-lg max-w-none text-secondary-700"
             dangerouslySetInnerHTML={{ __html: product.metadata.full_description }}
           />
         </div>
       )}
 
       {/* Specifications */}
-      {product.metadata?.specifications && Object.keys(product.metadata.specifications).length > 0 && (
-        <div className="mt-16 border-t pt-16">
-          <h2 className="text-3xl font-bold text-secondary-900 mb-8">Specifications</h2>
-          <div className="bg-secondary-50 rounded-lg p-8">
-            <dl className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {Object.entries(product.metadata.specifications).map(([key, value]) => (
-                <div key={key}>
-                  <dt className="text-sm font-medium text-secondary-500 uppercase tracking-wider">
+      {Object.keys(specifications).length > 0 && (
+        <div className="mt-16">
+          <h2 className="text-2xl font-bold text-secondary-900 mb-6">Specifications</h2>
+          <div className="bg-secondary-50 rounded-lg p-6">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {Object.entries(specifications).map(([key, value]) => (
+                <div key={key} className="border-b border-secondary-200 pb-2">
+                  <dt className="font-medium text-secondary-900 capitalize">
                     {key.replace(/_/g, ' ')}
                   </dt>
-                  <dd className="mt-1 text-lg text-secondary-900">
-                    {String(value)}
+                  <dd className="text-secondary-600 mt-1">
+                    {typeof value === 'string' ? value : String(value)}
                   </dd>
                 </div>
               ))}
