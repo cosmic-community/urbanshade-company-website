@@ -21,7 +21,7 @@ export default async function SupportPage() {
     )
   }
 
-  // Group articles by category
+  // Group articles by category with proper type safety
   const articlesByCategory = supportArticles.reduce((acc, article) => {
     const category = article.metadata?.category?.value || 'General';
     if (!acc[category]) {
@@ -70,10 +70,14 @@ export default async function SupportPage() {
       {/* Support Articles by Category */}
       <div className="space-y-12">
         {categoryOrder
-          .filter(categoryKey => articlesByCategory[categoryKey])
+          .filter(categoryKey => {
+            const articles = articlesByCategory[categoryKey];
+            return articles && articles.length > 0;
+          })
           .map((categoryKey) => {
             const articles = articlesByCategory[categoryKey];
             
+            // Additional safety check even after filter
             if (!articles || articles.length === 0) {
               return null;
             }
@@ -93,9 +97,14 @@ export default async function SupportPage() {
         {/* Articles without specific categories */}
         {Object.keys(articlesByCategory)
           .filter(category => !categoryOrder.includes(category))
+          .filter(category => {
+            const articles = articlesByCategory[category];
+            return articles && articles.length > 0;
+          })
           .map((category) => {
             const articles = articlesByCategory[category];
             
+            // Additional safety check even after filter
             if (!articles || articles.length === 0) {
               return null;
             }
